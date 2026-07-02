@@ -601,23 +601,6 @@ body {
 /* Espace bas accueil pour la barre nav (sur le conteneur scrollable) */
 #ecran-accueil { padding-bottom: 130px !important; box-sizing: border-box; }
 </style>
-
-
-<style id="cn-v1-pro-css">
-/* === PATCH CSS V1 PRO === */
-.cn-pro-card{background:linear-gradient(160deg,rgba(139,92,246,.12),rgba(24,24,31,.92));border:1px solid rgba(139,92,246,.28);border-radius:22px;padding:14px;margin-bottom:14px;box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05)}
-.cn-pro-title{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#D4AF37;margin-bottom:10px}
-.cn-chip-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cn-chip-row button{min-height:42px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:12px;font-weight:700;font-family:-apple-system,sans-serif;cursor:pointer;text-align:left;padding:8px 10px}
-.cn-chip-row button:active{transform:scale(.98)}
-.cn-pro-note{font-size:11px;line-height:1.35;color:#A1A1AA;margin-top:10px}
-.cn-warning{font-size:11px;line-height:1.35;color:#FBBF24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:9px 10px;margin-bottom:10px}
-#grille-prest{grid-template-columns:1fr 1fr!important}
-#grille-prest .btn-prest.plein{grid-column:1/-1}
-#ec-devis .input-texte{margin-bottom:6px}
-@media (min-width:768px){.cn-chip-row{grid-template-columns:repeat(4,1fr)}.cn-chip-row button{text-align:center}.cn-pro-card{grid-column:1/-1}}
-</style>
-
 </head>
 <body>
 <!-- ECRAN CHOIX UTILISATEUR -->
@@ -1099,6 +1082,7 @@ function construireAccueil() {
       "</div>" +
     "</div>" +
     "<div class='acc-body'>" +
+      "<div id='meteo-widget' style='margin-bottom:18px'></div>" +
       "<div class='acc-section'>Actions rapides</div>" +
       "<div class='acc-grid'>" +
         "<button class='acc-btn acc-btn-gold' onclick='lancerCalculateur()'><span class='acc-ico'><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\" fill=\"white\" opacity=\".9\"/><path d=\"M14 2v6h6\" fill=\"none\" stroke=\"white\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><line x1=\"8\" y1=\"13\" x2=\"16\" y2=\"13\" stroke=\"rgba(0,0,0,.3)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><line x1=\"8\" y1=\"17\" x2=\"13\" y2=\"17\" stroke=\"rgba(0,0,0,.3)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg></span><span class='acc-lbl'>Nouveau devis</span><span class='acc-desc'>Calculer et generer</span></button>" +
@@ -1135,7 +1119,110 @@ function construireAccueil() {
 
   majCAAccueil();
   afficherBottomNav("accueil");
+  chargerMeteo();
   }
+
+
+// === METEO (Open-Meteo, GPS du telephone) ===
+function codeMeteo(code) {
+  // Codes WMO -> {emoji, label, pluie}
+  if (code === 0) return { i: "\u2600\uFE0F", l: "Ensoleille", pluie: false };
+  if (code === 1 || code === 2) return { i: "\uD83C\uDF24\uFE0F", l: "Eclaircies", pluie: false };
+  if (code === 3) return { i: "\u2601\uFE0F", l: "Couvert", pluie: false };
+  if (code === 45 || code === 48) return { i: "\uD83C\uDF2B\uFE0F", l: "Brouillard", pluie: false };
+  if (code >= 51 && code <= 57) return { i: "\uD83C\uDF26\uFE0F", l: "Bruine", pluie: true };
+  if (code >= 61 && code <= 67) return { i: "\uD83C\uDF27\uFE0F", l: "Pluie", pluie: true };
+  if (code >= 71 && code <= 77) return { i: "\uD83C\uDF28\uFE0F", l: "Neige", pluie: true };
+  if (code >= 80 && code <= 82) return { i: "\uD83C\uDF27\uFE0F", l: "Averses", pluie: true };
+  if (code >= 85 && code <= 86) return { i: "\uD83C\uDF28\uFE0F", l: "Averses neige", pluie: true };
+  if (code >= 95) return { i: "\u26C8\uFE0F", l: "Orage", pluie: true };
+  return { i: "\uD83C\uDF25\uFE0F", l: "Variable", pluie: false };
+}
+
+function chargerMeteo() {
+  var widget = document.getElementById("meteo-widget");
+  if (!widget) return;
+  widget.innerHTML = "<div style='background:linear-gradient(160deg,rgba(24,24,31,.9),rgba(17,17,22,.9));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px;text-align:center;color:#71717A;font-size:13px'>Localisation en cours...</div>";
+
+  if (!navigator.geolocation) {
+    widget.innerHTML = "";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude.toFixed(3);
+    var lon = pos.coords.longitude.toFixed(3);
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+      "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7";
+    fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      afficherMeteo(data, widget);
+    }).catch(function(){
+      widget.innerHTML = "<div style='background:rgba(24,24,31,.9);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;text-align:center;color:#71717A;font-size:12px'>Meteo indisponible</div>";
+    });
+  }, function() {
+    // Refus geoloc : masquer le widget
+    widget.innerHTML = "";
+  }, { timeout: 8000, maximumAge: 1800000 });
+}
+
+function afficherMeteo(data, widget) {
+  if (!data || !data.daily || !data.current) { widget.innerHTML = ""; return; }
+  var joursNoms = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  var moisNoms = ["Jan","Fev","Mar","Avr","Mai","Juin","Juil","Aou","Sep","Oct","Nov","Dec"];
+  var cur = data.current;
+  var curMeteo = codeMeteo(cur.weather_code);
+  var d = data.daily;
+
+  var html = "<div style='background:linear-gradient(160deg,rgba(24,24,31,.92),rgba(17,17,22,.92));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.3)'>";
+  // Ligne actuelle
+  html += "<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:14px'>";
+  html += "<div style='display:flex;align-items:center;gap:12px'>";
+  html += "<div style='font-size:38px;line-height:1'>" + curMeteo.i + "</div>";
+  html += "<div><div style='font-size:28px;font-weight:800;color:#fff;line-height:1'>" + Math.round(cur.temperature_2m) + "\u00B0</div>";
+  html += "<div style='font-size:12px;color:#A1A1AA;margin-top:2px'>" + curMeteo.l + "</div></div></div>";
+  html += "<div style='text-align:right'><div style='font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:.1em'>Aujourd'hui</div>";
+  html += "<div style='font-size:12px;color:#A1A1AA;margin-top:2px'>" + Math.round(d.temperature_2m_max[0]) + "\u00B0 / " + Math.round(d.temperature_2m_min[0]) + "\u00B0</div></div>";
+  html += "</div>";
+
+  // Alerte pluie sur les prochains jours travailles
+  var joursPluie = [];
+  for (var k = 0; k < d.time.length; k++) {
+    var m = codeMeteo(d.weather_code[k]);
+    var proba = d.precipitation_probability_max ? d.precipitation_probability_max[k] : 0;
+    if (m.pluie || proba >= 60) {
+      var dt = new Date(d.time[k]);
+      joursPluie.push(joursNoms[dt.getDay()]);
+    }
+  }
+  if (joursPluie.length > 0) {
+    html += "<div style='background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#F87171;display:flex;align-items:center;gap:6px'>";
+    html += "<span>\uD83C\uDF27\uFE0F</span><span>Pluie prevue : " + joursPluie.join(", ") + "</span></div>";
+  }
+
+  // 7 jours
+  html += "<div style='display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch'>";
+  for (var i = 0; i < d.time.length; i++) {
+    var dt2 = new Date(d.time[i]);
+    var mto = codeMeteo(d.weather_code[i]);
+    var proba2 = d.precipitation_probability_max ? d.precipitation_probability_max[i] : 0;
+    var estAujourdhui = (i === 0);
+    var bg = estAujourdhui ? "rgba(139,92,246,.15)" : (mto.pluie ? "rgba(239,68,68,.08)" : "rgba(255,255,255,.03)");
+    var bord = estAujourdhui ? "1px solid rgba(139,92,246,.35)" : "1px solid rgba(255,255,255,.05)";
+    html += "<div style='flex:1;min-width:44px;background:" + bg + ";border:" + bord + ";border-radius:12px;padding:8px 4px;text-align:center'>";
+    html += "<div style='font-size:10px;font-weight:700;color:" + (estAujourdhui ? "#A855F7" : "#A1A1AA") + ";text-transform:uppercase'>" + (estAujourdhui ? "Auj" : joursNoms[dt2.getDay()]) + "</div>";
+    html += "<div style='font-size:20px;margin:4px 0'>" + mto.i + "</div>";
+    html += "<div style='font-size:11px;font-weight:700;color:#fff'>" + Math.round(d.temperature_2m_max[i]) + "\u00B0</div>";
+    html += "<div style='font-size:10px;color:#71717A'>" + Math.round(d.temperature_2m_min[i]) + "\u00B0</div>";
+    if (proba2 >= 30) {
+      html += "<div style='font-size:9px;color:#60A5FA;margin-top:2px'>" + proba2 + "%</div>";
+    } else {
+      html += "<div style='font-size:9px;color:transparent;margin-top:2px'>-</div>";
+    }
+    html += "</div>";
+  }
+  html += "</div>";
+  html += "</div>";
+  widget.innerHTML = html;
+}
 
 // Calcul du chiffre d'affaires pour l'accueil (tresorerie + contrats)
 function majCAAccueil() {
@@ -6636,248 +6723,6 @@ function init() {
       });
     } catch (e) { /* ignore */ }
   }
-})();
-
-
-/* === PATCH V1 PRO — Crea Nature
-   Objectif : fiabiliser calculs, TVA, tarif horaire, chantier rapide,
-   bibliothèque prestations, garde-fous IA et UX terrain. === */
-(function(){
-  function cnTarif(){ return parseFloat(localStorage.getItem('creanature_tarif') || '72') || 72; }
-  function cnTva(){ return (parseFloat(localStorage.getItem('creanature_tva') || '20') || 20) / 100; }
-  function cnTvaLabel(){ return String(Math.round(cnTva()*10000)/100).replace('.', ',') + '%'; }
-  function cnSafe(n){ n=parseFloat(n); return isFinite(n) ? n : 0; }
-
-  // Prestations métier ajoutées sans casser les boutons existants.
-  var CN_PRESTS = {
-    terrasse: 'Terrasse bois sur plots',
-    massif: 'Création de massif',
-    toiture: 'Traitement toiture fongicide',
-    terrain: 'Nettoyage terrain',
-    rognage: 'Rognage de souche',
-    arrosage: 'Arrosage automatique'
-  };
-  for (var k in CN_PRESTS) { if (window.nomPrests) window.nomPrests[k] = CN_PRESTS[k]; }
-
-  // Remplace les calculs en dur à 72 EUR/h et TVA 20% par les réglages sauvegardés.
-  window.htLigne = function(h, w, s) {
-    w = cnSafe(w); if (w < 1) w = 1;
-    return cnSafe(h) * cnTarif() * w + cnSafe(s);
-  };
-
-  window.calculer = function() {
-    var tarif = cnTarif();
-    var taux = cnTva();
-    var w = etat.interv < 1 ? 1 : etat.interv;
-    var h = cnSafe(etat.heures);
-    var s = cnSafe(etat.fournitures);
-    var htPrincipal = h * tarif * w + s;
-    ecrire('cr-h', euros(h * tarif * w));
-
-    var el_h = trouverEl('cv-h');
-    if (el_h) { el_h.textContent = etat.heures || '0'; el_h.classList.toggle('vide', !etat.heures); }
-    var el_s = trouverEl('cv-s');
-    if (el_s) { el_s.textContent = etat.fournitures || '0'; el_s.classList.toggle('vide', !etat.fournitures); }
-
-    var htLignes = 0;
-    for (var i = 0; i < lignes.length; i++) {
-      var lg = lignes[i];
-      var lw = lg.interv < 1 ? 1 : lg.interv;
-      var lh = cnSafe(lg.heures);
-      var ls = cnSafe(lg.fournitures);
-      var ht = lh * tarif * lw + ls;
-      htLignes += ht;
-      ecrire('lstot-' + lg.id, euros(ht));
-      ecrire('lcr-h-' + lg.id, euros(lh * tarif * lw));
-    }
-
-    var totalHT = htPrincipal + htLignes;
-    var tva = totalHT * taux;
-    var ttc = totalHT + tva;
-    ecrire('total-ht', euros(totalHT));
-    ecrire('total-tva', euros(tva));
-    ecrire('total-ttc', euros(ttc));
-    return {ht: totalHT, tva: tva, ttc: ttc};
-  };
-
-  window.syncTotaux2 = function() {
-    var t = calculer();
-    ecrire('total-ht2', euros(t.ht));
-    ecrire('total-tva2', euros(t.tva));
-    ecrire('total-ttc2', euros(t.ttc));
-    cnMajLabels();
-  };
-
-  // Regroupe correctement les lignes devis avec tarif dynamique.
-  window.construireRangees = function() {
-    var tarif = cnTarif();
-    var rangees = [];
-    var h = cnSafe(etat.heures);
-    var w = etat.interv < 1 ? 1 : etat.interv;
-    var s = cnSafe(etat.fournitures);
-    var designation = lireChamp('main-designation');
-    var totalPrincipal = h * tarif * w + s;
-    if (totalPrincipal > 0) {
-      var pn = etat.prests.map(function(p) { return nomPrests[p] || p; });
-      if (etat.autre && etat.autreTexte) pn.push(etat.autreTexte);
-      var lbl = pn.length > 0 ? pn.join(', ') : 'Prestation';
-      if (designation) lbl += ' - ' + designation;
-      rangees.push({label: lbl, total: totalPrincipal});
-    }
-    for (var i = 0; i < lignes.length; i++) {
-      var lg = lignes[i];
-      var lh = cnSafe(lg.heures);
-      var lw = lg.interv < 1 ? 1 : lg.interv;
-      var ls = cnSafe(lg.fournitures);
-      var totalLigne = lh * tarif * lw + ls;
-      if (totalLigne > 0) {
-        var lpn = lg.prests.map(function(p) { return nomPrests[p] || p; });
-        if (lg.autre && lg.autreTexte) lpn.push(lg.autreTexte);
-        var llbl = lpn.length > 0 ? lpn.join(', ') : ('Prestation ' + (i + 2));
-        if (lg.designation) llbl += ' - ' + lg.designation;
-        rangees.push({label: llbl, total: totalLigne});
-      }
-    }
-    return rangees;
-  };
-
-  function cnMajLabels() {
-    var tarif = cnTarif();
-    var units = document.querySelectorAll('.champ-unite');
-    units.forEach(function(el){
-      if (/h x/i.test(el.textContent)) el.textContent = 'h x ' + tarif + ' EUR =';
-    });
-    document.querySelectorAll('.total-label').forEach(function(el){
-      if (/TVA/i.test(el.textContent)) el.textContent = 'TVA (' + cnTvaLabel() + ')';
-    });
-  }
-
-  function cnAddPrestButtons(){
-    var grille = document.getElementById('grille-prest');
-    if (!grille || document.getElementById('bp-terrasse')) return;
-    var order = [
-      ['terrasse','▰ Terrasse bois'], ['massif','✦ Massif'], ['toiture','⌂ Traitement toiture'],
-      ['terrain','▣ Nettoyage terrain'], ['rognage','◉ Rognage souche'], ['arrosage','≈ Arrosage auto']
-    ];
-    order.forEach(function(item){
-      var b=document.createElement('button');
-      b.className='btn-prest';
-      b.id='bp-'+item[0];
-      b.textContent=item[1];
-      b.onclick=function(){ togglePrest(item[0]); };
-      grille.insertBefore(b, document.getElementById('bp-autre'));
-    });
-    var oldToggle = window.togglePrest;
-    window.togglePrest = function(p){
-      if (etat.prests.indexOf(p) >= 0) etat.prests.splice(etat.prests.indexOf(p),1);
-      else etat.prests.push(p);
-      Object.keys(nomPrests).forEach(function(key){
-        var b=trouverEl('bp-'+key);
-        if(b) b.classList.toggle('actif', etat.prests.indexOf(key)>=0);
-      });
-      calculer();
-    };
-  }
-
-  function cnAddChantierRapide(){
-    var target = document.getElementById('ec-calc');
-    if (!target || document.getElementById('cn-chantier-rapide')) return;
-    var box = document.createElement('div');
-    box.id='cn-chantier-rapide';
-    box.className='cn-pro-card';
-    box.innerHTML = "<div class='cn-pro-title'>Chantier rapide</div>"+
-      "<div class='cn-chip-row'>"+
-      "<button data-cn='haie'>Haie 2 gars / 4h</button>"+
-      "<button data-cn='tonte'>Tonte 1 gars / 2h</button>"+
-      "<button data-cn='terrasse'>Terrasse 10 m²</button>"+
-      "<button data-cn='terrain'>Nettoyage terrain</button>"+
-      "</div>"+
-      "<div class='cn-pro-note'>Préremplit prestation, hommes, heures et une base fournitures. À ajuster ensuite.</div>";
-    target.insertBefore(box, target.firstElementChild);
-    box.querySelectorAll('button').forEach(function(btn){
-      btn.onclick=function(){ cnPreset(this.getAttribute('data-cn')); };
-    });
-  }
-
-  function cnPreset(type){
-    reinitialiser();
-    var presets = {
-      haie:{p:['haie','evac'],i:2,h:'4',s:'0',d:'Taille, nettoyage et évacuation des déchets verts'},
-      tonte:{p:['tonte'],i:1,h:'2',s:'0',d:'Tonte et finition des bordures'},
-      terrasse:{p:['terrasse'],i:2,h:'16',s:'1800',d:'Terrasse bois sur plots plastique avec géotextile'},
-      terrain:{p:['terrain','evac'],i:2,h:'7',s:'0',d:'Nettoyage général, coupe, chargement et évacuation'}
-    };
-    var p = presets[type]; if(!p) return;
-    p.p.forEach(function(x){ etat.prests.push(x); var b=trouverEl('bp-'+x); if(b) b.classList.add('actif'); });
-    setInterv(p.i);
-    etat.heures=p.h; valeurs.h=p.h;
-    etat.fournitures=p.s; valeurs.s=p.s;
-    var md=trouverEl('main-designation'); if(md) md.value=p.d;
-    calculer(); cnMajLabels(); afficherToast('Chantier rapide appliqué');
-  }
-
-  function cnPatchReglagesIA(){
-    // Garde-fou : clé IA côté navigateur = dépannage uniquement.
-    setTimeout(function(){
-      var inputs = Array.from(document.querySelectorAll('input[type="password"]'));
-      inputs.forEach(function(inp){
-        if ((inp.placeholder || '').indexOf('sk-') >= 0 && !inp.dataset.cnWarned) {
-          inp.dataset.cnWarned='1';
-          var warn=document.createElement('div');
-          warn.className='cn-warning';
-          warn.textContent='Attention : une clé API dans le navigateur n’est pas sécurisée. Usage dépannage uniquement. Version pro = proxy serveur.';
-          inp.parentNode.insertBefore(warn, inp);
-        }
-      });
-    }, 300);
-  }
-
-  function cnAddAcompte(){
-    var ddate = document.getElementById('d-date');
-    var card = ddate && ddate.closest ? ddate.closest('.carte') : null;
-    if (!card || document.getElementById('d-acompte')) return;
-    var wrap=document.createElement('div');
-    wrap.innerHTML = "<label class='label-form'>Acompte demandé (%)</label>"+
-      "<input class='input-texte' id='d-acompte' type='number' min='0' max='100' placeholder='Ex: 30'/>"+
-      "<label class='label-form'>Validité du devis</label>"+
-      "<input class='input-texte' id='d-validite' type='text' value='30 jours'/>";
-    card.appendChild(wrap);
-  }
-
-  var oldConstruireDevis = window.construireDevis;
-  window.construireDevis = function(){
-    var html = oldConstruireDevis();
-    html = html.replace(/TVA \(20%\)/g, 'TVA (' + cnTvaLabel() + ')').replace(/TVA 20 %/g, 'TVA ' + cnTvaLabel());
-    var acompte = cnSafe(lireChamp('d-acompte'));
-    var validite = lireChamp('d-validite') || '30 jours';
-    var t = calculer();
-    var extra = "<div style='margin-top:12px;padding:10px 12px;background:#FAF8F5;border-left:3px solid #C8923E;font-size:11px;line-height:1.5'>"+
-      "<strong>Validité du devis :</strong> "+echapper(validite)+"<br>"+
-      (acompte>0 ? "<strong>Acompte à la validation :</strong> "+echapper(String(acompte))+"% soit "+euros(t.ttc*acompte/100)+" TTC<br>" : '')+
-      "<strong>Conditions :</strong> prix valable sous réserve d’accès normal au chantier, hors travaux ou fournitures non prévus au devis."+
-      "</div>";
-    return html.replace('</body>', extra + '</body>');
-  };
-
-  var oldSauver = window.sauverDevisDansHistorique;
-  if (oldSauver) {
-    window.sauverDevisDansHistorique = function(numDevis, nomClient, auteur){
-      try { oldSauver(numDevis, nomClient, auteur); } catch(e) { console.log(e); }
-      try {
-        localStorage.setItem('cn_dernier_devis_local', JSON.stringify({num:numDevis, client:nomClient, date:new Date().toISOString()}));
-      } catch(e){}
-    };
-  }
-
-  window.addEventListener('load', function(){
-    setTimeout(function(){
-      cnAddPrestButtons();
-      cnAddChantierRapide();
-      cnAddAcompte();
-      cnMajLabels();
-      cnPatchReglagesIA();
-    }, 250);
-  });
 })();
 
 
