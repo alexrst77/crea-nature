@@ -12,13 +12,50 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* ══════════════════════════════════════════════════════════════
+   THÈME GÉNÉRAL « OR & NUIT » — Créa Nature
+   Toute nouvelle UI doit utiliser ces tokens, jamais de hex en dur.
+
+   Palette
+   ─ Fonds (du plus profond au plus élevé) : --bg → --carte → --carte2
+   ─ Accent principal : or (--or / --or2) = actions, montants, actif
+   ─ Accent secondaire : violet (--violet) = IA, premium, décoratif
+   ─ Texte : --txt (principal) / --txt2 (secondaire) / --txt3 (discret)
+   ─ États : --succes / --erreur / --info
+
+   Règles d'usage
+   ─ 1 seul accent fort par carte (or OU violet, pas les deux)
+   ─ Bordures toujours --bordure, jamais de gris opaque
+   ─ Rayons : cartes --r-carte, boutons --r-btn, champs --r-champ
+   ─ Ombres : --ombre-1 (repos), --ombre-or (élément actif doré)
+   ══════════════════════════════════════════════════════════════ */
 :root{
+  /* Accents */
   --or:#D4AF37;--or2:#A8861F;
-  --violet:#8B5CF6;--violet2:#A855F7;--violet-glow:rgba(139,92,246,.4);--or-glow:rgba(212,175,55,.35);
-  --noir:#111116;--gris:#A1A1AA;--gris2:rgba(255,255,255,.08);--gris3:#09090B;--blanc:#18181F;
-  --bg:#09090B;--carte:#111116;--carte2:#18181F;--bordure:rgba(255,255,255,.08);
-  --txt:#FFFFFF;--txt2:#A1A1AA;--succes:#22C55E;--erreur:#EF4444;
-  --haut:env(safe-area-inset-top,44px);--bas:env(safe-area-inset-bottom,34px)
+  --violet:#8B5CF6;--violet2:#A855F7;
+  --violet-glow:rgba(139,92,246,.4);--or-glow:rgba(212,175,55,.35);
+  --or-fond:rgba(212,175,55,.10);          /* fond des éléments actifs dorés */
+  /* Fonds */
+  --bg:#09090B;--carte:#111116;--carte2:#18181F;
+  --bordure:rgba(255,255,255,.08);
+  /* Texte */
+  --txt:#FFFFFF;--txt2:#A1A1AA;--txt3:#636366;
+  /* États */
+  --succes:#22C55E;--erreur:#EF4444;--info:#5B8DEF;
+  /* Rayons & ombres */
+  --r-carte:14px;--r-btn:13px;--r-champ:9px;
+  --ombre-1:0 1px 4px rgba(0,0,0,.25);
+  --ombre-or:0 2px 8px rgba(212,175,55,.35);
+  /* Dégradés officiels */
+  --grad-or:linear-gradient(135deg,var(--or),var(--or2));
+  --grad-violet:linear-gradient(135deg,var(--violet),var(--violet2));
+  /* Safe areas iOS */
+  --haut:env(safe-area-inset-top,44px);--bas:env(safe-area-inset-bottom,34px);
+  /* ── Alias hérités (anciens noms, à ne plus utiliser dans le nouveau code)
+     --noir désignait le texte sombre du thème clair d'origine : il pointe
+     désormais vers le texte clair pour rester lisible sur fond sombre. */
+  --noir:var(--txt);--gris:var(--txt2);--gris2:var(--bordure);
+  --gris3:var(--bg);--blanc:var(--carte2)
 }
 html,body{height:100%;overflow:hidden;background:#09090B;font-family:-apple-system,"SF Pro Display",Inter,sans-serif;-webkit-font-smoothing:antialiased}
 #app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto}
@@ -36,7 +73,7 @@ html,body{height:100%;overflow:hidden;background:#09090B;font-family:-apple-syst
 .grille4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:6px}
 .btn-prest{padding:12px 8px;border-radius:12px;border:1.5px solid var(--gris2);background:var(--blanc);font-size:12px;font-weight:500;color:var(--noir);cursor:pointer;text-align:center;font-family:-apple-system,sans-serif;line-height:1.5}
 .btn-prest.plein{grid-column:1/-1}
-.btn-prest.actif{border-color:var(--or);background:rgba(200,146,62,.08);color:var(--or2)}
+.btn-prest.actif{border-color:var(--or);background:var(--or-fond);color:var(--or)}
 .btn-interv{padding:10px 4px;border-radius:11px;border:1.5px solid var(--gris2);background:var(--blanc);font-size:14px;font-weight:600;color:var(--noir);cursor:pointer;font-family:-apple-system,sans-serif;text-align:center}
 .btn-interv.actif{border-color:var(--or)!important;background:var(--or)!important;color:#fff!important;font-weight:700;box-shadow:0 2px 8px rgba(200,146,62,.4)}
 .champ-tap{background:var(--blanc);border-radius:12px;padding:12px 14px;margin-bottom:6px;border:1.5px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
@@ -58,7 +95,7 @@ html,body{height:100%;overflow:hidden;background:#09090B;font-family:-apple-syst
 .bloc-desig-corps{padding:10px 14px 14px}
 .titre-bloc{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--gris);margin:9px 0 5px}
 .titre-bloc:first-child{margin-top:0}
-.sous-total{background:rgba(200,146,62,.08);border-radius:9px;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:9px}
+.sous-total{background:var(--or-fond);border-radius:9px;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:9px}
 .grille-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
 .photo-wrap{position:relative}
 .photo-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;border:1.5px solid var(--gris2);display:block}
@@ -1082,7 +1119,6 @@ function construireAccueil() {
       "</div>" +
     "</div>" +
     "<div class='acc-body'>" +
-      "<div id='meteo-widget' style='margin-bottom:18px'></div>" +
       "<div class='acc-section'>Actions rapides</div>" +
       "<div class='acc-grid'>" +
         "<button class='acc-btn acc-btn-gold' onclick='lancerCalculateur()'><span class='acc-ico'><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\" fill=\"white\" opacity=\".9\"/><path d=\"M14 2v6h6\" fill=\"none\" stroke=\"white\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><line x1=\"8\" y1=\"13\" x2=\"16\" y2=\"13\" stroke=\"rgba(0,0,0,.3)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><line x1=\"8\" y1=\"17\" x2=\"13\" y2=\"17\" stroke=\"rgba(0,0,0,.3)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg></span><span class='acc-lbl'>Nouveau devis</span><span class='acc-desc'>Calculer et generer</span></button>" +
@@ -1119,110 +1155,8 @@ function construireAccueil() {
 
   majCAAccueil();
   afficherBottomNav("accueil");
-  chargerMeteo();
   }
 
-
-// === METEO (Open-Meteo, GPS du telephone) ===
-function codeMeteo(code) {
-  // Codes WMO -> {emoji, label, pluie}
-  if (code === 0) return { i: "\u2600\uFE0F", l: "Ensoleille", pluie: false };
-  if (code === 1 || code === 2) return { i: "\uD83C\uDF24\uFE0F", l: "Eclaircies", pluie: false };
-  if (code === 3) return { i: "\u2601\uFE0F", l: "Couvert", pluie: false };
-  if (code === 45 || code === 48) return { i: "\uD83C\uDF2B\uFE0F", l: "Brouillard", pluie: false };
-  if (code >= 51 && code <= 57) return { i: "\uD83C\uDF26\uFE0F", l: "Bruine", pluie: true };
-  if (code >= 61 && code <= 67) return { i: "\uD83C\uDF27\uFE0F", l: "Pluie", pluie: true };
-  if (code >= 71 && code <= 77) return { i: "\uD83C\uDF28\uFE0F", l: "Neige", pluie: true };
-  if (code >= 80 && code <= 82) return { i: "\uD83C\uDF27\uFE0F", l: "Averses", pluie: true };
-  if (code >= 85 && code <= 86) return { i: "\uD83C\uDF28\uFE0F", l: "Averses neige", pluie: true };
-  if (code >= 95) return { i: "\u26C8\uFE0F", l: "Orage", pluie: true };
-  return { i: "\uD83C\uDF25\uFE0F", l: "Variable", pluie: false };
-}
-
-function chargerMeteo() {
-  var widget = document.getElementById("meteo-widget");
-  if (!widget) return;
-  widget.innerHTML = "<div style='background:linear-gradient(160deg,rgba(24,24,31,.9),rgba(17,17,22,.9));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px;text-align:center;color:#71717A;font-size:13px'>Localisation en cours...</div>";
-
-  if (!navigator.geolocation) {
-    widget.innerHTML = "";
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    var lat = pos.coords.latitude.toFixed(3);
-    var lon = pos.coords.longitude.toFixed(3);
-    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-      "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7";
-    fetch(url).then(function(r){ return r.json(); }).then(function(data){
-      afficherMeteo(data, widget);
-    }).catch(function(){
-      widget.innerHTML = "<div style='background:rgba(24,24,31,.9);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;text-align:center;color:#71717A;font-size:12px'>Meteo indisponible</div>";
-    });
-  }, function() {
-    // Refus geoloc : masquer le widget
-    widget.innerHTML = "";
-  }, { timeout: 8000, maximumAge: 1800000 });
-}
-
-function afficherMeteo(data, widget) {
-  if (!data || !data.daily || !data.current) { widget.innerHTML = ""; return; }
-  var joursNoms = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
-  var moisNoms = ["Jan","Fev","Mar","Avr","Mai","Juin","Juil","Aou","Sep","Oct","Nov","Dec"];
-  var cur = data.current;
-  var curMeteo = codeMeteo(cur.weather_code);
-  var d = data.daily;
-
-  var html = "<div style='background:linear-gradient(160deg,rgba(24,24,31,.92),rgba(17,17,22,.92));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.3)'>";
-  // Ligne actuelle
-  html += "<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:14px'>";
-  html += "<div style='display:flex;align-items:center;gap:12px'>";
-  html += "<div style='font-size:38px;line-height:1'>" + curMeteo.i + "</div>";
-  html += "<div><div style='font-size:28px;font-weight:800;color:#fff;line-height:1'>" + Math.round(cur.temperature_2m) + "\u00B0</div>";
-  html += "<div style='font-size:12px;color:#A1A1AA;margin-top:2px'>" + curMeteo.l + "</div></div></div>";
-  html += "<div style='text-align:right'><div style='font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:.1em'>Aujourd'hui</div>";
-  html += "<div style='font-size:12px;color:#A1A1AA;margin-top:2px'>" + Math.round(d.temperature_2m_max[0]) + "\u00B0 / " + Math.round(d.temperature_2m_min[0]) + "\u00B0</div></div>";
-  html += "</div>";
-
-  // Alerte pluie sur les prochains jours travailles
-  var joursPluie = [];
-  for (var k = 0; k < d.time.length; k++) {
-    var m = codeMeteo(d.weather_code[k]);
-    var proba = d.precipitation_probability_max ? d.precipitation_probability_max[k] : 0;
-    if (m.pluie || proba >= 60) {
-      var dt = new Date(d.time[k]);
-      joursPluie.push(joursNoms[dt.getDay()]);
-    }
-  }
-  if (joursPluie.length > 0) {
-    html += "<div style='background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#F87171;display:flex;align-items:center;gap:6px'>";
-    html += "<span>\uD83C\uDF27\uFE0F</span><span>Pluie prevue : " + joursPluie.join(", ") + "</span></div>";
-  }
-
-  // 7 jours
-  html += "<div style='display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch'>";
-  for (var i = 0; i < d.time.length; i++) {
-    var dt2 = new Date(d.time[i]);
-    var mto = codeMeteo(d.weather_code[i]);
-    var proba2 = d.precipitation_probability_max ? d.precipitation_probability_max[i] : 0;
-    var estAujourdhui = (i === 0);
-    var bg = estAujourdhui ? "rgba(139,92,246,.15)" : (mto.pluie ? "rgba(239,68,68,.08)" : "rgba(255,255,255,.03)");
-    var bord = estAujourdhui ? "1px solid rgba(139,92,246,.35)" : "1px solid rgba(255,255,255,.05)";
-    html += "<div style='flex:1;min-width:44px;background:" + bg + ";border:" + bord + ";border-radius:12px;padding:8px 4px;text-align:center'>";
-    html += "<div style='font-size:10px;font-weight:700;color:" + (estAujourdhui ? "#A855F7" : "#A1A1AA") + ";text-transform:uppercase'>" + (estAujourdhui ? "Auj" : joursNoms[dt2.getDay()]) + "</div>";
-    html += "<div style='font-size:20px;margin:4px 0'>" + mto.i + "</div>";
-    html += "<div style='font-size:11px;font-weight:700;color:#fff'>" + Math.round(d.temperature_2m_max[i]) + "\u00B0</div>";
-    html += "<div style='font-size:10px;color:#71717A'>" + Math.round(d.temperature_2m_min[i]) + "\u00B0</div>";
-    if (proba2 >= 30) {
-      html += "<div style='font-size:9px;color:#60A5FA;margin-top:2px'>" + proba2 + "%</div>";
-    } else {
-      html += "<div style='font-size:9px;color:transparent;margin-top:2px'>-</div>";
-    }
-    html += "</div>";
-  }
-  html += "</div>";
-  html += "</div>";
-  widget.innerHTML = html;
-}
 
 // Calcul du chiffre d'affaires pour l'accueil (tresorerie + contrats)
 function majCAAccueil() {
@@ -1470,10 +1404,10 @@ function ouvrirReglages() {
   apiInfoEl.textContent = apiVal ? "Cle API configuree" : "Cle API manquante - IA inactive";
   var apiNoteEl = document.createElement("div");
   apiNoteEl.style.cssText = "font-size:11px;color:#636366;margin-bottom:10px";
-  apiNoteEl.textContent = "Obtenir sur console.anthropic.com > API Keys";
+  apiNoteEl.textContent = "Cle OpenAI - obtenir sur platform.openai.com > API Keys";
   var inpAPIEl = document.createElement("input");
   inpAPIEl.type = "password";
-  inpAPIEl.placeholder = "sk-ant-api03-...";
+  inpAPIEl.placeholder = "sk-...";
   inpAPIEl.value = apiVal;
   inpAPIEl.style.cssText = "width:100%;padding:10px 12px;border:1.5px solid #3A3A3C;border-radius:9px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none;margin-bottom:8px;display:block";
   var btnSvAPI = document.createElement("button");
@@ -1498,7 +1432,7 @@ function ouvrirReglages() {
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
       body:JSON.stringify({model:"gpt-4o-mini",max_tokens:5,messages:[{role:"user",content:"ok"}]})
     }).then(function(r){return r.json();})
-    .then(function(d){ btnTstAPI.textContent="Tester la connexion IA"; btnTstAPI.disabled=false; afficherToast(d.content ? "IA connectee !" : "Erreur API"); })
+    .then(function(d){ btnTstAPI.textContent="Tester la connexion IA"; btnTstAPI.disabled=false; afficherToast(d && d.choices ? "IA connectee !" : "Erreur API" + (d && d.error && d.error.message ? " : " + d.error.message.slice(0,60) : "")); })
     .catch(function(){ btnTstAPI.textContent="Tester la connexion IA"; btnTstAPI.disabled=false; afficherToast("Echec - verifier la cle"); });
   };
   carteAPI.appendChild(apiInfoEl); carteAPI.appendChild(apiNoteEl);
@@ -2281,6 +2215,14 @@ setInterval(majHorloge, 15000);
 function euros(n) {
   if (!isFinite(n) || isNaN(n)) n = 0;
   return n.toLocaleString("fr-FR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " EUR";
+}
+
+// Lit un montant saisi par l'utilisateur en acceptant la virgule francaise ("12,50")
+// et les espaces ("1 200"). Retourne NaN si non numerique.
+function lireMontant(v) {
+  var s = String(v == null ? "" : v).replace(/\s/g, "").replace(",", ".");
+  if (s === "") return NaN;
+  return parseFloat(s);
 }
 
 function echapper(s) {
@@ -3198,6 +3140,15 @@ var firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
+// Ecriture Firestore avec toast en cas d'echec (evite les pertes silencieuses)
+function ecrireDoc(col, id, data) {
+  return db.collection(col).doc(id).set(data).catch(function(err) {
+    console.warn("Ecriture " + col + "/" + id + " echouee:", err && err.message);
+    if (typeof afficherToast === "function") afficherToast("Erreur de sauvegarde - reessaie");
+    throw err;
+  });
+}
+
 // === PERSISTANCE HORS-LIGNE ===
 // Firestore garde les donnees en cache local (IndexedDB) : lecture hors-ligne,
 // ecritures mises en file d'attente et synchronisees au retour du reseau.
@@ -3683,6 +3634,7 @@ function afficherBandeauRAZ() {
 var memoTypeCourant="tache"; var memoFiltreCourant="tout"; var memoPolling=null;
 
 function ouvrirPanneauMemo() {
+  masquerBottomNav();
   var ancien=document.getElementById("panneau-memo"); if(ancien) ancien.remove();
   var pn=document.createElement("div"); pn.id="panneau-memo";
   pn.style.cssText="position:fixed;inset:0;z-index:999999;background:#1C1C1E;display:flex;flex-direction:column;font-family:-apple-system,sans-serif";
@@ -3718,6 +3670,7 @@ function ouvrirPanneauMemo() {
 function fermerPanneauMemo() {
   if(memoPolling){ clearInterval(memoPolling); memoPolling=null; }
   var pn=document.getElementById("panneau-memo"); if(pn) pn.remove();
+  afficherBottomNav("accueil");
 }
 function setMemoFiltre(f) {
   memoFiltreCourant=f;
@@ -4183,7 +4136,7 @@ function afficherTresorerie(data, contrats) {
         cb.onclick = function() {
           var d2 = data[userId] || { encaissements: [], avances: 0 };
           d2.encaissements[i].valide = !v;
-          db.collection("tresorerie").doc(userId).set(d2).then(function() { chargerTresorerie(); });
+          ecrireDoc("tresorerie", userId, d2).then(function() { chargerTresorerie(); });
         };
       })(uid, idx, enc.valide);
       var info = document.createElement("div");
@@ -4201,7 +4154,7 @@ function afficherTresorerie(data, contrats) {
           if (!confirm("Supprimer cet encaissement ?")) return;
           var d2 = data[userId] || { encaissements: [], avances: 0 };
           d2.encaissements.splice(i, 1);
-          db.collection("tresorerie").doc(userId).set(d2).then(function() { chargerTresorerie(); });
+          ecrireDoc("tresorerie", userId, d2).then(function() { chargerTresorerie(); });
         };
       })(uid, idx);
       row.appendChild(cb); row.appendChild(info); row.appendChild(mont); row.appendChild(bDel);
@@ -4215,7 +4168,7 @@ function afficherTresorerie(data, contrats) {
     inpClient.type = "text"; inpClient.placeholder = "Client";
     inpClient.style.cssText = "flex:1;padding:8px 10px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
     var inpMont = document.createElement("input");
-    inpMont.type = "number"; inpMont.placeholder = "EUR";
+    inpMont.type = "text"; inpMont.inputMode = "decimal"; inpMont.placeholder = "EUR";
     inpMont.style.cssText = "width:80px;padding:8px 8px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
     var btnAdd = document.createElement("button");
     btnAdd.style.cssText = "background:linear-gradient(135deg,#D4AF37,#A8861F);border:none;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0";
@@ -4223,7 +4176,7 @@ function afficherTresorerie(data, contrats) {
     (function(userId) {
       btnAdd.onclick = function() {
         var client = inpClient.value.trim();
-        var montant = parseFloat(inpMont.value);
+        var montant = lireMontant(inpMont.value);
         if (!client || isNaN(montant) || montant <= 0) { afficherToast("Remplis client et montant"); return; }
         var d2 = data[userId] || { encaissements: [], avances: 0 };
         if (!d2.encaissements) d2.encaissements = [];
@@ -4232,7 +4185,7 @@ function afficherTresorerie(data, contrats) {
           client: client, montant: montant, valide: false,
           date: ("0"+now.getDate()).slice(-2)+"/"+("0"+(now.getMonth()+1)).slice(-2)+"/"+now.getFullYear()
         });
-        db.collection("tresorerie").doc(userId).set(d2).then(function() {
+        ecrireDoc("tresorerie", userId, d2).then(function() {
           inpClient.value = ""; inpMont.value = ""; chargerTresorerie();
         });
       };
@@ -4269,7 +4222,7 @@ function afficherTresorerie(data, contrats) {
           });
           d2.archives[anneeArch] = d2.archives[anneeArch].concat(aArchiver.reverse());
           if (window._encSelec) window._encSelec[userId] = [];
-          db.collection("tresorerie").doc(userId).set(d2).then(function() {
+          ecrireDoc("tresorerie", userId, d2).then(function() {
             afficherToast(aArchiver.length + " encaissement(s) archive(s) sous " + anneeArch);
             chargerTresorerie();
           });
@@ -4321,7 +4274,7 @@ function afficherTresorerie(data, contrats) {
     var ligne1 = document.createElement("div");
     ligne1.style.cssText = "display:flex;gap:6px";
     var inpAv = document.createElement("input");
-    inpAv.type = "number"; inpAv.placeholder = "Montant EUR (+/-)";
+    inpAv.type = "text"; inpAv.inputMode = "decimal"; inpAv.placeholder = "Montant EUR (+/-)";
     inpAv.style.cssText = "width:130px;padding:8px 10px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
     var inpLibelle = document.createElement("input");
     inpLibelle.type = "text"; inpLibelle.placeholder = "Motif (ex: achat carburant)";
@@ -4333,7 +4286,7 @@ function afficherTresorerie(data, contrats) {
     formAv.appendChild(ligne1); formAv.appendChild(btnAv);
     (function(userId, histoActuel) {
       btnAv.onclick = function() {
-        var montant = parseFloat(inpAv.value);
+        var montant = lireMontant(inpAv.value);
         var libelle = inpLibelle.value.trim();
         if (isNaN(montant) || montant === 0) { afficherToast("Entre un montant"); return; }
         if (!libelle) { afficherToast("Indique le motif du mouvement"); return; }
@@ -4353,7 +4306,7 @@ function afficherTresorerie(data, contrats) {
         // Recalculer le total
         d2.avances = d2.avancesHisto.reduce(function(s,a){ return s+(a.montant||0); }, 0);
         if (d2.avances < 0) d2.avances = 0;
-        db.collection("tresorerie").doc(userId).set(d2).then(function() {
+        ecrireDoc("tresorerie", userId, d2).then(function() {
           inpAv.value = ""; inpLibelle.value = ""; chargerTresorerie();
         });
       };
@@ -4452,7 +4405,7 @@ function afficherTresorerie(data, contrats) {
   inpClientC.type = "text"; inpClientC.placeholder = "Nom du client";
   inpClientC.style.cssText = "flex:1;padding:8px 10px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
   var inpMontC = document.createElement("input");
-  inpMontC.type = "number"; inpMontC.placeholder = "Montant";
+  inpMontC.type = "text"; inpMontC.inputMode = "decimal"; inpMontC.placeholder = "Montant";
   inpMontC.style.cssText = "width:85px;padding:8px 8px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
   formC.appendChild(inpClientC); formC.appendChild(inpMontC);
   formWrap.appendChild(formC);
@@ -4468,7 +4421,7 @@ function afficherTresorerie(data, contrats) {
   btnAddC.textContent = "+ Ajouter";
   btnAddC.onclick = function() {
     var client = inpClientC.value.trim();
-    var montant = parseFloat(inpMontC.value);
+    var montant = lireMontant(inpMontC.value);
     if (!client || isNaN(montant) || montant <= 0) { afficherToast("Remplis client et montant"); return; }
     var periodicite = selPeriode.value;
     var montantMensuel = (periodicite === "trimestriel") ? (montant / 3) : montant;
@@ -4515,14 +4468,14 @@ function afficherTresorerie(data, contrats) {
   inpLibP.type = "text"; inpLibP.placeholder = "Libelle (ex: prime)";
   inpLibP.style.cssText = "flex:1;padding:8px 10px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
   var inpMontP = document.createElement("input");
-  inpMontP.type = "number"; inpMontP.placeholder = "EUR";
+  inpMontP.type = "text"; inpMontP.inputMode = "decimal"; inpMontP.placeholder = "EUR";
   inpMontP.style.cssText = "width:80px;padding:8px 8px;border:1.5px solid #3A3A3C;border-radius:8px;background:#1C1C1E;color:#fff;font-size:13px;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none";
   var btnAddP = document.createElement("button");
   btnAddP.style.cssText = "background:rgba(91,141,239,.85);border:none;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0";
   btnAddP.textContent = "+ Ajouter";
   btnAddP.onclick = function() {
     var lib = inpLibP.value.trim();
-    var montant = parseFloat(inpMontP.value);
+    var montant = lireMontant(inpMontP.value);
     if (!lib || isNaN(montant) || montant === 0) { afficherToast("Remplis libelle et montant"); return; }
     var now = new Date();
     var periode = ("0"+(now.getMonth()+1)).slice(-2) + "/" + now.getFullYear();
@@ -4593,7 +4546,7 @@ function ouvrirHistoriqueAvances(nom, histo, userId, data) {
         d2.avancesHisto.splice(index, 1);
         d2.avances = d2.avancesHisto.reduce(function(s,x){ return s+(x.montant||0); }, 0);
         if (d2.avances < 0) d2.avances = 0;
-        db.collection("tresorerie").doc(userId).set(d2).then(function() {
+        ecrireDoc("tresorerie", userId, d2).then(function() {
           pop.remove(); chargerTresorerie();
         });
       };
@@ -4660,7 +4613,7 @@ function ouvrirArchivesEncaissements(nom, archives, userId, data) {
           var item = d2.archives[an].splice(i, 1)[0];
           if (item) d2.encaissements.push(item);
           if (d2.archives[an].length === 0) delete d2.archives[an];
-          db.collection("tresorerie").doc(userId).set(d2).then(function() {
+          ecrireDoc("tresorerie", userId, d2).then(function() {
             afficherToast("Encaissement restaure");
             pop.remove();
             chargerTresorerie();
@@ -4682,7 +4635,7 @@ function ouvrirArchivesEncaissements(nom, archives, userId, data) {
         if (!d2.archives || !d2.archives[an]) return;
         d2.encaissements = d2.encaissements.concat(d2.archives[an]);
         delete d2.archives[an];
-        db.collection("tresorerie").doc(userId).set(d2).then(function() {
+        ecrireDoc("tresorerie", userId, d2).then(function() {
           afficherToast("Annee " + an + " restauree");
           pop.remove();
           chargerTresorerie();
@@ -5004,7 +4957,7 @@ function ajouterDevisATresorerie(d) {
             valide: false,
             date: d.date || ""
           });
-          db.collection("tresorerie").doc(userId).set(d2).then(function() {
+          ecrireDoc("tresorerie", userId, d2).then(function() {
             afficherToast("Ajoute a la tresorerie de " + userName);
             // Marquer le devis comme alloue
             if (d._id) {
@@ -5098,7 +5051,7 @@ function retirerDevisDeTresorerie(d) {
         if (e.client === (d.client||"Sans nom") && Math.abs((e.montant||0) - (d.totalTTC||0)) < 0.01) { idxTrouve = i; break; }
       }
       if (idxTrouve >= 0) d2.encaissements.splice(idxTrouve, 1);
-      db.collection("tresorerie").doc(userId).set(d2).then(function() {
+      ecrireDoc("tresorerie", userId, d2).then(function() {
         // Effacer l'attribution sur le devis
         if (d._id) {
           db.collection("devis").doc(d._id).update({allocatedTo: ""}).catch(function(){});
@@ -6688,38 +6641,13 @@ function init() {
     document.head.appendChild(link);
   } catch (e) { /* ignore */ }
 
-  // 2. Service Worker inline : cache l'app pour chargement hors-ligne
-  if ("serviceWorker" in navigator) {
-    var swCode = [
-      "var CACHE = 'creanature-v1';",
-      "self.addEventListener('install', function(e){ self.skipWaiting(); });",
-      "self.addEventListener('activate', function(e){ e.waitUntil(self.clients.claim()); });",
-      "self.addEventListener('fetch', function(e){",
-      "  var req = e.request;",
-      "  if (req.method !== 'GET') return;",
-      "  var url = new URL(req.url);",
-      "  // Ne pas intercepter Firebase/Firestore (gere sa propre persistance)",
-      "  if (url.hostname.indexOf('firestore') >= 0 || url.hostname.indexOf('googleapis') >= 0 || url.hostname.indexOf('firebaseio') >= 0 || url.hostname.indexOf('gstatic') >= 0) return;",
-      "  e.respondWith(",
-      "    fetch(req).then(function(res){",
-      "      if (res && res.status === 200 && (url.origin === location.origin || url.hostname.indexOf('gstatic')<0)) {",
-      "        var copy = res.clone();",
-      "        caches.open(CACHE).then(function(cache){ try { cache.put(req, copy); } catch(err){} });",
-      "      }",
-      "      return res;",
-      "    }).catch(function(){",
-      "      return caches.match(req).then(function(cached){ return cached || caches.match('./'); });",
-      "    })",
-      "  );",
-      "});"
-    ].join("\n");
+  // 2. Service Worker externe (./sw.js) : cache l'app pour chargement hors-ligne.
+  // IMPORTANT : les navigateurs refusent les Service Workers en URL blob:
+  // le fichier sw.js doit etre deploye a cote de index.html sur GitHub Pages.
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
     try {
-      var swBlob = new Blob([swCode], { type: "text/javascript" });
-      var swUrl = URL.createObjectURL(swBlob);
-      navigator.serviceWorker.register(swUrl).then(function(reg) {
-        // SW enregistre
-      }).catch(function(err) {
-        console.warn("Service Worker non enregistre:", err.message);
+      navigator.serviceWorker.register("./sw.js").catch(function(err) {
+        console.warn("Service Worker non enregistre:", err && err.message);
       });
     } catch (e) { /* ignore */ }
   }
